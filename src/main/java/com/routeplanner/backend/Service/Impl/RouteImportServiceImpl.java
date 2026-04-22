@@ -10,6 +10,8 @@ import com.routeplanner.backend.Service.RouteImportService;
 import com.routeplanner.backend.Service.RoutePlanService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.routeplanner.backend.DTO.Geocoding.GeocodingResult;
+import com.routeplanner.backend.Service.GeocodingService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,9 +21,12 @@ import java.util.List;
 public class RouteImportServiceImpl implements RouteImportService {
 
     private final RoutePlanService routePlanService;
+    private final GeocodingService geocodingService;
 
-    public RouteImportServiceImpl(RoutePlanService routePlanService) {
+    public RouteImportServiceImpl(RoutePlanService routePlanService,
+                                  GeocodingService geocodingService) {
         this.routePlanService = routePlanService;
+        this.geocodingService = geocodingService;
     }
 
     @Override
@@ -42,11 +47,15 @@ public class RouteImportServiceImpl implements RouteImportService {
             item.setRawAddress(stop.getRawAddress());
             item.setPriorityNo(stop.getPriorityNo());
 
-            boolean valid = stop.getRawAddress() != null && !stop.getRawAddress().trim().isEmpty();
-            item.setValid(valid);
-            item.setValidationMessage(valid ? "Hazır" : "Adres boş olamaz");
+            GeocodingResult geocodingResult = geocodingService.validateAndGeocode(stop.getRawAddress());
 
-            if (valid) {
+            item.setValid(Boolean.TRUE.equals(geocodingResult.getSuccess()));
+            item.setValidationMessage(geocodingResult.getValidationMessage());
+            item.setNormalizedAddress(geocodingResult.getNormalizedAddress());
+            item.setLatitude(geocodingResult.getLatitude());
+            item.setLongitude(geocodingResult.getLongitude());
+
+            if (Boolean.TRUE.equals(geocodingResult.getSuccess())) {
                 validCount++;
             } else {
                 invalidCount++;

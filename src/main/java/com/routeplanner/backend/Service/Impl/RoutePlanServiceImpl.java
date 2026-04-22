@@ -2,7 +2,6 @@ package com.routeplanner.backend.Service.Impl;
 
 import com.routeplanner.backend.DTO.Request.CreateRoutePlanRequest;
 import com.routeplanner.backend.DTO.Request.CreateRouteStopRequest;
-import com.routeplanner.backend.DTO.Response.RouteStopResponse;
 import com.routeplanner.backend.Entity.RoutePlanEntity;
 import com.routeplanner.backend.Entity.RouteStopEntity;
 import com.routeplanner.backend.Entity.UserEntity;
@@ -13,6 +12,8 @@ import com.routeplanner.backend.Repository.UserRepository;
 import com.routeplanner.backend.Service.RoutePlanService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.routeplanner.backend.DTO.Geocoding.GeocodingResult;
+import com.routeplanner.backend.Service.GeocodingService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,13 +26,15 @@ public class RoutePlanServiceImpl implements RoutePlanService {
     private final RoutePlanRepository routePlanRepository;
     private final RouteStopRepository routeStopRepository;
     private final UserRepository userRepository;
+    private final GeocodingService geocodingService;
 
     public RoutePlanServiceImpl(RoutePlanRepository routePlanRepository,
                                 RouteStopRepository routeStopRepository,
-                                UserRepository userRepository) {
+                                UserRepository userRepository, GeocodingService geocodingService) {
         this.routePlanRepository = routePlanRepository;
         this.routeStopRepository = routeStopRepository;
         this.userRepository = userRepository;
+        this.geocodingService = geocodingService;
     }
 
     @Override
@@ -86,6 +89,11 @@ public class RoutePlanServiceImpl implements RoutePlanService {
             stop.setPriorityNo(request.getPriorityNo() == null ? 0 : request.getPriorityNo());
             stop.setDeliveryNote(request.getDeliveryNote());
             stop.setSequenceNo(currentSize + i + 1);
+
+            GeocodingResult geocodingResult = geocodingService.validateAndGeocode(request.getRawAddress());
+            stop.setNormalizedAddress(geocodingResult.getNormalizedAddress());
+            stop.setLatitude(geocodingResult.getLatitude());
+            stop.setLongitude(geocodingResult.getLongitude());
 
             result.add(routeStopRepository.save(stop));
         }
