@@ -14,6 +14,7 @@ import com.routeplanner.backend.Repository.RoutePlanRepository;
 import com.routeplanner.backend.Repository.RouteReoptimizationHistoryRepository;
 import com.routeplanner.backend.Repository.RouteStopRepository;
 import com.routeplanner.backend.Repository.UserRepository;
+import com.routeplanner.backend.Service.RouteOptimizationEngineService;
 import com.routeplanner.backend.Service.RouteOptimizationService;
 import com.routeplanner.backend.Enums.NotificationEventTypeEnum;
 import com.routeplanner.backend.Service.NotificationService;
@@ -37,18 +38,20 @@ public class RouteOptimizationServiceImpl implements RouteOptimizationService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
+    private final RouteOptimizationEngineService routeOptimizationEngineService;
 
     public RouteOptimizationServiceImpl(RoutePlanRepository routePlanRepository,
                                         RouteStopRepository routeStopRepository,
                                         RouteReoptimizationHistoryRepository historyRepository,
                                         UserRepository userRepository,
-                                        ObjectMapper objectMapper, NotificationService notificationService) {
+                                        ObjectMapper objectMapper, NotificationService notificationService, RouteOptimizationEngineService routeOptimizationEngineService) {
         this.routePlanRepository = routePlanRepository;
         this.routeStopRepository = routeStopRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
         this.notificationService = notificationService;
+        this.routeOptimizationEngineService = routeOptimizationEngineService;
     }
 
     @Override
@@ -66,33 +69,21 @@ public class RouteOptimizationServiceImpl implements RouteOptimizationService {
 
         String previousSnapshot = toSnapshot(allStops);
 
-        boolean includeSkipped = Boolean.TRUE.equals(request.getIncludeSkippedStops());
-        boolean includeFailed = Boolean.TRUE.equals(request.getIncludeFailedStops());
-        boolean includePostponed = request.getIncludePostponedStops() == null || request.getIncludePostponedStops();
+        List<RouteStopEntity> completedStops = allStops.stream()
+                .filter(stop -> stop.getStopStatus() == RouteStopStatusEnum.DELIVERED)
+                .toList();
 
-        List<RouteStopEntity> fixedStops = allStops.stream()
-                .filter(this::isCompletedLike)
-                .collect(Collectors.toList());
+        List<RouteStopEntity> optimizableStops = allStops.stream()
+                .filter(stop -> stop.getStopStatus() != RouteStopStatusEnum.DELIVERED)
+                .toList();
 
-        List<RouteStopEntity> candidateStops = allStops.stream()
-                .filter(stop -> shouldParticipate(stop, includeSkipped, includeFailed, includePostponed))
-                .collect(Collectors.toList());
+        List<RouteStopEntity> optimizedStops = routeOptimizationEngineService.optimize(routePlan, optimizableStops);
 
-        candidateStops.sort(
-                Comparator.comparing(RouteStopEntity::getPriorityNo, Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(RouteStopEntity::getSequenceNo)
-        );
+        int baseSequence = completedStops.size();
 
-        int maxFixedSequence = fixedStops.stream()
-                .map(RouteStopEntity::getSequenceNo)
-                .max(Integer::compareTo)
-                .orElse(0);
-
-        for (int i = 0; i < candidateStops.size(); i++) {
-            RouteStopEntity stop = candidateStops.get(i);
-            stop.setPreviousSequenceNo(stop.getSequenceNo());
-            stop.setSequenceNo(maxFixedSequence + i + 1);
-            stop.setOptimizationRound(stop.getOptimizationRound() == null ? 2 : stop.getOptimizationRound() + 1);
+        for (int i = 0; i < optimizedStops.size(); i++) {
+            RouteStopEntity stop = optimizedStops.get(i);
+            stop.setSequenceNo(baseSequence + i + 1);
 
             if (stop.getStopStatus() == RouteStopStatusEnum.SKIPPED
                     || stop.getStopStatus() == RouteStopStatusEnum.FAILED
