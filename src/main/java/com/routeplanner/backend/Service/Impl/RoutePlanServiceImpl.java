@@ -91,6 +91,11 @@ public class RoutePlanServiceImpl implements RoutePlanService {
             stop.setSequenceNo(currentSize + i + 1);
 
             GeocodingResult geocodingResult = geocodingService.validateAndGeocode(request.getRawAddress());
+
+            if (!Boolean.TRUE.equals(geocodingResult.getSuccess())) {
+                throw new RuntimeException("Adres çözümlenemedi: " + request.getRawAddress());
+            }
+
             stop.setNormalizedAddress(geocodingResult.getNormalizedAddress());
             stop.setLatitude(geocodingResult.getLatitude());
             stop.setLongitude(geocodingResult.getLongitude());

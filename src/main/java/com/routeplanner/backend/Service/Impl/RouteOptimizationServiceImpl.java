@@ -168,12 +168,13 @@ public class RouteOptimizationServiceImpl implements RouteOptimizationService {
 
     private String toSnapshot(List<RouteStopEntity> stops) {
         List<Map<String, Object>> snapshot = new ArrayList<>();
+
         for (RouteStopEntity stop : stops) {
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("stopId", stop.getId());
+            item.put("stopId", stop.getId() == null ? null : stop.getId().toString());
             item.put("sequenceNo", stop.getSequenceNo());
             item.put("previousSequenceNo", stop.getPreviousSequenceNo());
-            item.put("status", stop.getStopStatus());
+            item.put("status", stop.getStopStatus() == null ? null : stop.getStopStatus().name());
             item.put("priorityNo", stop.getPriorityNo());
             item.put("address", stop.getRawAddress());
             snapshot.add(item);

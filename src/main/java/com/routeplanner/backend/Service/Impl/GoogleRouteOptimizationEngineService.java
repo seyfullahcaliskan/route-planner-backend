@@ -30,6 +30,22 @@ public class GoogleRouteOptimizationEngineService implements RouteOptimizationEn
 
     @Override
     public List<RouteStopEntity> optimize(RoutePlanEntity routePlan, List<RouteStopEntity> stops) {
+        if (routePlan.getStartLatitude() == null || routePlan.getStartLongitude() == null) {
+            throw new RuntimeException("Başlangıç koordinatı eksik. Route oluşturulurken başlangıç adresi geocode edilmemiş.");
+        }
+
+        if (routePlan.getEndLatitude() == null || routePlan.getEndLongitude() == null) {
+            throw new RuntimeException("Bitiş koordinatı eksik. Route oluşturulurken bitiş adresi geocode edilmemiş.");
+        }
+
+        if (stops == null || stops.isEmpty()) {
+            return List.of();
+        }
+
+        if (stops.size() > 25) {
+            throw new RuntimeException("Tek optimizasyon isteğinde maksimum 25 durak destekleniyor.");
+        }
+
         try {
             List<RouteStopEntity> geocodedStops = stops.stream()
                     .filter(s -> s.getLatitude() != null && s.getLongitude() != null)

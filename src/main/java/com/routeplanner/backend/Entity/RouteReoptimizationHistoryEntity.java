@@ -2,6 +2,8 @@ package com.routeplanner.backend.Entity;
 
 import com.routeplanner.backend.Enums.ReoptimizationReasonEnum;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "route_reoptimization_history")
@@ -18,11 +20,13 @@ public class RouteReoptimizationHistoryEntity extends BaseEntity {
     @Column(name = "reason", nullable = false, length = 50)
     private ReoptimizationReasonEnum reason;
 
-    @Column(name = "previous_route_snapshot", nullable = false, columnDefinition = "jsonb")
-    private String previousRouteSnapshot;
-
-    @Column(name = "new_route_snapshot", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "new_route_snapshot")
     private String newRouteSnapshot;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "previous_route_snapshot")
+    private String previousRouteSnapshot;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "triggered_by_user_id")
