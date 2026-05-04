@@ -1,29 +1,29 @@
-create table if not exists route_reoptimization_history (
-    id uuid primary key,
-    etag uuid not null,
-    status varchar(30) not null,
-    date_of_recorded timestamp not null,
-    user_who_recorded varchar(50) not null,
-    date_of_last_updated timestamp not null,
-    user_who_last_updated varchar(50) not null,
-    counter_of_unique_data bigint not null,
+CREATE TABLE IF NOT EXISTS route_reoptimization_history (
+    id UUID PRIMARY KEY,
+    etag UUID NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    date_of_recorded TIMESTAMP NOT NULL,
+    user_who_recorded VARCHAR(50) NOT NULL,
+    date_of_last_updated TIMESTAMP NOT NULL,
+    user_who_last_updated VARCHAR(50) NOT NULL,
+    counter_of_unique_data BIGINT NOT NULL,
 
-    route_plan_id uuid not null,
-    optimization_round integer not null,
-    reason varchar(50) not null,
+    route_plan_id UUID NOT NULL,
+    optimization_round INTEGER NOT NULL,
+    reason VARCHAR(50) NOT NULL,
 
-    previous_route_snapshot jsonb not null,
-    new_route_snapshot jsonb not null,
+    previous_route_snapshot JSONB NOT NULL,
+    new_route_snapshot JSONB NOT NULL,
 
-    triggered_by_user_id uuid,
-    note varchar(1000),
+    triggered_by_user_id UUID,
+    note VARCHAR(1000),
 
-    constraint fk_reopt_history_plan
-        foreign key (route_plan_id) references route_plan(id),
+    CONSTRAINT fk_reopt_history_plan
+        FOREIGN KEY (route_plan_id) REFERENCES route_plan(id) ON DELETE CASCADE,
 
-    constraint fk_reopt_history_user
-        foreign key (triggered_by_user_id) references users(id)
+    CONSTRAINT fk_reopt_history_user
+        FOREIGN KEY (triggered_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-create index if not exists idx_reopt_history_route_plan_id on route_reoptimization_history(route_plan_id);
-create index if not exists idx_reopt_history_base_status on route_reoptimization_history(status);
+CREATE INDEX IF NOT EXISTS idx_reopt_history_route_plan_id ON route_reoptimization_history(route_plan_id);
+CREATE INDEX IF NOT EXISTS idx_reopt_history_base_status ON route_reoptimization_history(status);

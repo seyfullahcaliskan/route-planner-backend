@@ -1,46 +1,46 @@
-create table if not exists route_stop (
-    id uuid primary key,
-    etag uuid not null,
-    status varchar(30) not null,
-    date_of_recorded timestamp not null,
-    user_who_recorded varchar(50) not null,
-    date_of_last_updated timestamp not null,
-    user_who_last_updated varchar(50) not null,
-    counter_of_unique_data bigint not null,
+CREATE TABLE IF NOT EXISTS route_stop (
+    id UUID PRIMARY KEY,
+    etag UUID NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    date_of_recorded TIMESTAMP NOT NULL,
+    user_who_recorded VARCHAR(50) NOT NULL,
+    date_of_last_updated TIMESTAMP NOT NULL,
+    user_who_last_updated VARCHAR(50) NOT NULL,
+    counter_of_unique_data BIGINT NOT NULL,
 
-    route_plan_id uuid not null,
-    external_reference varchar(100),
+    route_plan_id UUID NOT NULL,
+    external_reference VARCHAR(100),
 
-    customer_name varchar(150),
-    customer_phone varchar(30),
+    customer_name VARCHAR(150),
+    customer_phone VARCHAR(30),
 
-    raw_address varchar(1000) not null,
-    normalized_address varchar(1000),
-    latitude numeric(10,7),
-    longitude numeric(10,7),
+    raw_address VARCHAR(1000) NOT NULL,
+    normalized_address VARCHAR(1000),
+    latitude NUMERIC(10,7),
+    longitude NUMERIC(10,7),
 
-    sequence_no integer not null,
-    previous_sequence_no integer,
-    optimization_round integer not null default 1,
-    priority_no integer not null default 0,
+    sequence_no INTEGER NOT NULL,
+    previous_sequence_no INTEGER,
+    optimization_round INTEGER NOT NULL DEFAULT 1,
+    priority_no INTEGER NOT NULL DEFAULT 0,
 
-    delivery_note varchar(1000),
-    estimated_arrival_time timestamp,
-    actual_arrival_time timestamp,
-    delivered_at timestamp,
+    delivery_note VARCHAR(1000),
+    estimated_arrival_time TIMESTAMP,
+    actual_arrival_time TIMESTAMP,
+    delivered_at TIMESTAMP,
 
-    stop_status varchar(30) not null,
-    is_locked boolean not null default false,
-    is_cancelled boolean not null default false,
+    stop_status VARCHAR(30) NOT NULL,
+    is_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
 
-    navigation_url varchar(1000),
-    last_navigation_opened_at timestamp,
+    navigation_url VARCHAR(1000),
+    last_navigation_opened_at TIMESTAMP,
 
-    constraint fk_route_stop_plan
-        foreign key (route_plan_id) references route_plan(id)
+    CONSTRAINT fk_route_stop_plan
+        FOREIGN KEY (route_plan_id) REFERENCES route_plan(id) ON DELETE CASCADE
 );
 
-create index if not exists idx_route_stop_route_plan_id on route_stop(route_plan_id);
-create index if not exists idx_route_stop_route_plan_sequence on route_stop(route_plan_id, sequence_no);
-create index if not exists idx_route_stop_status on route_stop(stop_status);
-create index if not exists idx_route_stop_base_status on route_stop(status);
+CREATE INDEX IF NOT EXISTS idx_route_stop_route_plan_id ON route_stop(route_plan_id);
+CREATE INDEX IF NOT EXISTS idx_route_stop_route_plan_sequence ON route_stop(route_plan_id, sequence_no);
+CREATE INDEX IF NOT EXISTS idx_route_stop_status ON route_stop(stop_status);
+CREATE INDEX IF NOT EXISTS idx_route_stop_base_status ON route_stop(status);

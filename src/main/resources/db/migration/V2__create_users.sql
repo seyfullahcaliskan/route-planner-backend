@@ -1,19 +1,22 @@
-create table if not exists users (
-    id uuid primary key,
-    etag uuid not null,
-    status varchar(30) not null,
-    date_of_recorded timestamp not null,
-    user_who_recorded varchar(50) not null,
-    date_of_last_updated timestamp not null,
-    user_who_last_updated varchar(50) not null,
-    counter_of_unique_data bigint not null,
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY,
+    etag UUID NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    date_of_recorded TIMESTAMP NOT NULL,
+    user_who_recorded VARCHAR(50) NOT NULL,
+    date_of_last_updated TIMESTAMP NOT NULL,
+    user_who_last_updated VARCHAR(50) NOT NULL,
+    counter_of_unique_data BIGINT NOT NULL,
 
-    name varchar(100) not null,
-    surname varchar(100) not null,
-    username varchar(100) not null unique,
-    password varchar(255) not null,
-    email varchar(150) not null unique,
-    phone_number varchar(30),
-    role varchar(30) not null,
-    company_name varchar(150)
+    name VARCHAR(100) NOT NULL,
+    surname VARCHAR(100) NOT NULL,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    phone_number VARCHAR(30),
+    role VARCHAR(30) NOT NULL,
+    company_name VARCHAR(150)
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

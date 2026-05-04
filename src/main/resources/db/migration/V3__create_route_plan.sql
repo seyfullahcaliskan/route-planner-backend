@@ -1,53 +1,54 @@
-create table if not exists route_plan (
-    id uuid primary key,
-    etag uuid not null,
-    status varchar(30) not null,
-    date_of_recorded timestamp not null,
-    user_who_recorded varchar(50) not null,
-    date_of_last_updated timestamp not null,
-    user_who_last_updated varchar(50) not null,
-    counter_of_unique_data bigint not null,
+CREATE TABLE IF NOT EXISTS route_plan (
+    id UUID PRIMARY KEY,
+    etag UUID NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    date_of_recorded TIMESTAMP NOT NULL,
+    user_who_recorded VARCHAR(50) NOT NULL,
+    date_of_last_updated TIMESTAMP NOT NULL,
+    user_who_last_updated VARCHAR(50) NOT NULL,
+    counter_of_unique_data BIGINT NOT NULL,
 
-    user_id uuid not null,
-    title varchar(200) not null,
-    description varchar(500),
+    user_id UUID NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description VARCHAR(500),
 
-    route_date date,
+    route_date DATE,
 
-    start_latitude numeric(10,7),
-    start_longitude numeric(10,7),
-    start_address varchar(500),
+    start_latitude NUMERIC(10,7),
+    start_longitude NUMERIC(10,7),
+    start_address VARCHAR(500),
 
-    end_latitude numeric(10,7),
-    end_longitude numeric(10,7),
-    end_address varchar(500),
+    end_latitude NUMERIC(10,7),
+    end_longitude NUMERIC(10,7),
+    end_address VARCHAR(500),
 
-    use_tolls boolean not null default false,
-    use_highways boolean not null default true,
-    use_traffic boolean not null default true,
+    use_tolls BOOLEAN NOT NULL DEFAULT FALSE,
+    use_highways BOOLEAN NOT NULL DEFAULT TRUE,
+    use_traffic BOOLEAN NOT NULL DEFAULT TRUE,
 
-    optimization_type varchar(30) not null,
-    navigation_provider varchar(30) not null,
+    optimization_type VARCHAR(30) NOT NULL,
+    navigation_provider VARCHAR(30) NOT NULL,
 
-    total_stop_count integer not null default 0,
-    completed_stop_count integer not null default 0,
-    failed_stop_count integer not null default 0,
-    skipped_stop_count integer not null default 0,
+    total_stop_count INTEGER NOT NULL DEFAULT 0,
+    completed_stop_count INTEGER NOT NULL DEFAULT 0,
+    failed_stop_count INTEGER NOT NULL DEFAULT 0,
+    skipped_stop_count INTEGER NOT NULL DEFAULT 0,
 
-    estimated_total_distance_meters bigint,
-    estimated_total_duration_seconds bigint,
-    actual_total_distance_meters bigint,
-    actual_total_duration_seconds bigint,
+    estimated_total_distance_meters BIGINT,
+    estimated_total_duration_seconds BIGINT,
+    actual_total_distance_meters BIGINT,
+    actual_total_duration_seconds BIGINT,
 
-    plan_status varchar(30) not null,
-    last_optimized_at timestamp,
-    last_started_at timestamp,
-    completed_at timestamp,
+    plan_status VARCHAR(30) NOT NULL,
+    last_optimized_at TIMESTAMP,
+    last_started_at TIMESTAMP,
+    completed_at TIMESTAMP,
 
-    constraint fk_route_plan_user
-        foreign key (user_id) references users(id)
+    CONSTRAINT fk_route_plan_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-create index if not exists idx_route_plan_user_id on route_plan(user_id);
-create index if not exists idx_route_plan_status on route_plan(plan_status);
-create index if not exists idx_route_plan_base_status on route_plan(status);
+CREATE INDEX IF NOT EXISTS idx_route_plan_user_id ON route_plan(user_id);
+CREATE INDEX IF NOT EXISTS idx_route_plan_status ON route_plan(plan_status);
+CREATE INDEX IF NOT EXISTS idx_route_plan_base_status ON route_plan(status);
+CREATE INDEX IF NOT EXISTS idx_route_plan_route_date ON route_plan(route_date);
