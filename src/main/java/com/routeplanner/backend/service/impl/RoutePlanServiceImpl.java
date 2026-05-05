@@ -85,15 +85,20 @@ public class RoutePlanServiceImpl implements RoutePlanService {
             stop.setDeliveryNote(request.getDeliveryNote());
             stop.setSequenceNo(currentSize + i + 1);
 
-            GeocodingResult geocodingResult = geocodingService.validateAndGeocode(request.getRawAddress());
-
-            if (!Boolean.TRUE.equals(geocodingResult.getSuccess())) {
-                throw new GeocodingException(request.getRawAddress());
+            if (request.hasCoordinates()) {
+                // Mobil haritadan seçilmiş — geocoding ATLAR
+                stop.setNormalizedAddress(request.getRawAddress());
+                stop.setLatitude(request.getLatitude());
+                stop.setLongitude(request.getLongitude());
+            } else {
+                GeocodingResult geocodingResult = geocodingService.validateAndGeocode(request.getRawAddress());
+                if (!Boolean.TRUE.equals(geocodingResult.getSuccess())) {
+                    throw new GeocodingException(request.getRawAddress());
+                }
+                stop.setNormalizedAddress(geocodingResult.getNormalizedAddress());
+                stop.setLatitude(geocodingResult.getLatitude());
+                stop.setLongitude(geocodingResult.getLongitude());
             }
-
-            stop.setNormalizedAddress(geocodingResult.getNormalizedAddress());
-            stop.setLatitude(geocodingResult.getLatitude());
-            stop.setLongitude(geocodingResult.getLongitude());
 
             result.add(routeStopRepository.save(stop));
         }

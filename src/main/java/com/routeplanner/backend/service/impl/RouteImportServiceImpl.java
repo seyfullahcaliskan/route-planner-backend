@@ -1,5 +1,6 @@
 package com.routeplanner.backend.service.impl;
 
+import com.routeplanner.backend.dto.geocoding.GeocodingResult;
 import com.routeplanner.backend.dto.request.CreateRouteImportPreviewRequest;
 import com.routeplanner.backend.dto.request.CreateRoutePlanRequest;
 import com.routeplanner.backend.dto.request.CreateRouteStopRequest;
@@ -7,13 +8,12 @@ import com.routeplanner.backend.dto.request.ReoptimizeRouteRequest;
 import com.routeplanner.backend.dto.response.RouteImportPreviewItemResponse;
 import com.routeplanner.backend.dto.response.RouteImportPreviewResponse;
 import com.routeplanner.backend.entity.RoutePlanEntity;
+import com.routeplanner.backend.service.GeocodingService;
 import com.routeplanner.backend.service.RouteImportService;
 import com.routeplanner.backend.service.RouteOptimizationService;
 import com.routeplanner.backend.service.RoutePlanService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.routeplanner.backend.dto.geocoding.GeocodingResult;
-import com.routeplanner.backend.service.GeocodingService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,8 @@ public class RouteImportServiceImpl implements RouteImportService {
     private final RouteOptimizationService routeOptimizationService;
 
     public RouteImportServiceImpl(RoutePlanService routePlanService,
-                                  GeocodingService geocodingService, RouteOptimizationService routeOptimizationService) {
+                                  GeocodingService geocodingService,
+                                  RouteOptimizationService routeOptimizationService) {
         this.routePlanService = routePlanService;
         this.geocodingService = geocodingService;
         this.routeOptimizationService = routeOptimizationService;
@@ -41,8 +42,8 @@ public class RouteImportServiceImpl implements RouteImportService {
             throw new RuntimeException("En az bir adres girilmelidir.");
         }
 
-        if (request.getStops().size() > 25) {
-            throw new RuntimeException("Şimdilik tek rotada maksimum 25 adres destekleniyor. 25 üzeri adresler için parçalı optimizasyon eklenecek.");
+        if (request.getStops().size() > 100) {
+            throw new RuntimeException("Tek rotada maksimum 100 adres destekleniyor.");
         }
 
         List<RouteImportPreviewItemResponse> items = new ArrayList<>();
@@ -60,18 +61,27 @@ public class RouteImportServiceImpl implements RouteImportService {
             item.setRawAddress(stop.getRawAddress());
             item.setPriorityNo(stop.getPriorityNo());
 
-            GeocodingResult geocodingResult = geocodingService.validateAndGeocode(stop.getRawAddress());
-
-            item.setValid(Boolean.TRUE.equals(geocodingResult.getSuccess()));
-            item.setValidationMessage(geocodingResult.getValidationMessage());
-            item.setNormalizedAddress(geocodingResult.getNormalizedAddress());
-            item.setLatitude(geocodingResult.getLatitude());
-            item.setLongitude(geocodingResult.getLongitude());
-
-            if (Boolean.TRUE.equals(geocodingResult.getSuccess())) {
+            if (stop.hasCoordinates()) {
+                // Mobile harita üzerinden seçilmiş — geocoding API çağrısı YOK
+                item.setValid(true);
+                item.setValidationMessage("OK (haritadan seçildi)");
+                item.setNormalizedAddress(stop.getRawAddress());
+                item.setLatitude(stop.getLatitude());
+                item.setLongitude(stop.getLongitude());
                 validCount++;
             } else {
-                invalidCount++;
+                GeocodingResult geocodingResult = geocodingService.validateAndGeocode(stop.getRawAddress());
+                item.setValid(Boolean.TRUE.equals(geocodingResult.getSuccess()));
+                item.setValidationMessage(geocodingResult.getValidationMessage());
+                item.setNormalizedAddress(geocodingResult.getNormalizedAddress());
+                item.setLatitude(geocodingResult.getLatitude());
+                item.setLongitude(geocodingResult.getLongitude());
+
+                if (Boolean.TRUE.equals(geocodingResult.getSuccess())) {
+                    validCount++;
+                } else {
+                    invalidCount++;
+                }
             }
 
             items.add(item);
@@ -91,71 +101,59 @@ public class RouteImportServiceImpl implements RouteImportService {
             throw new RuntimeException("Rota import isteği boş olamaz.");
         }
 
-        if (request.getStartAddress() == null || request.getStartAddress().trim().isEmpty()) {
-            throw new RuntimeException("Başlangıç adresi boş olamaz.");
+        // Başlangıç adresi: lat/lng geldiyse adres zorunlu değil
+        boolean startCoordsProvided = request.getStartLatitude() != null && request.getStartLongitude() != null;
+        if (!startCoordsProvided && (request.getStartAddress() == null || request.getStartAddress().trim().isEmpty())) {
+            throw new RuntimeException("Başlangıç adresi veya konumu boş olamaz.");
         }
 
         RouteImportPreviewResponse preview = preview(request);
-
         if (preview.getInvalidCount() > 0) {
             throw new RuntimeException("Geçersiz adresler var. Önce düzeltin.");
         }
 
-        String startAddress = request.getStartAddress().trim();
-
-        String endAddress =
-                request.getEndAddress() != null && !request.getEndAddress().trim().isEmpty()
-                        ? request.getEndAddress().trim()
-                        : startAddress;
+        String startAddress = request.getStartAddress() == null ? "" : request.getStartAddress().trim();
+        String endAddress = request.getEndAddress() != null && !request.getEndAddress().trim().isEmpty()
+                ? request.getEndAddress().trim()
+                : startAddress;
 
         CreateRoutePlanRequest planRequest = new CreateRoutePlanRequest();
-
         planRequest.setUserId(request.getUserId());
         planRequest.setTitle(request.getTitle());
         planRequest.setDescription(request.getDescription());
         planRequest.setRouteDate(request.getRouteDate());
-
         planRequest.setStartAddress(startAddress);
         planRequest.setEndAddress(endAddress);
 
-        if (request.getStartLatitude() != null && request.getStartLongitude() != null) {
+        // START coords
+        if (startCoordsProvided) {
             planRequest.setStartLatitude(request.getStartLatitude());
             planRequest.setStartLongitude(request.getStartLongitude());
         } else {
             GeocodingResult startGeo = geocodingService.validateAndGeocode(startAddress);
-
-            if (!Boolean.TRUE.equals(startGeo.getSuccess())) {
-                throw new RuntimeException(
-                        "Başlangıç adresi çözümlenemedi: " + startGeo.getValidationMessage()
-                );
+            if (!Boolean.TRUE.equals(startGeo.getSuccess()) || startGeo.getLatitude() == null) {
+                throw new RuntimeException("Başlangıç adresi çözümlenemedi: " + startGeo.getValidationMessage());
             }
-
-            if (startGeo.getLatitude() == null || startGeo.getLongitude() == null) {
-                throw new RuntimeException("Başlangıç adresi için koordinat üretilemedi.");
-            }
-
             planRequest.setStartLatitude(startGeo.getLatitude());
             planRequest.setStartLongitude(startGeo.getLongitude());
         }
 
-        if (request.getEndLatitude() != null && request.getEndLongitude() != null) {
+        // END coords
+        boolean endCoordsProvided = request.getEndLatitude() != null && request.getEndLongitude() != null;
+        if (endCoordsProvided) {
             planRequest.setEndLatitude(request.getEndLatitude());
             planRequest.setEndLongitude(request.getEndLongitude());
-        } else {
+        } else if (request.getEndAddress() != null && !request.getEndAddress().trim().isEmpty()) {
             GeocodingResult endGeo = geocodingService.validateAndGeocode(endAddress);
-
-            if (!Boolean.TRUE.equals(endGeo.getSuccess())) {
-                throw new RuntimeException(
-                        "Bitiş adresi çözümlenemedi: " + endGeo.getValidationMessage()
-                );
+            if (!Boolean.TRUE.equals(endGeo.getSuccess()) || endGeo.getLatitude() == null) {
+                throw new RuntimeException("Bitiş adresi çözümlenemedi: " + endGeo.getValidationMessage());
             }
-
-            if (endGeo.getLatitude() == null || endGeo.getLongitude() == null) {
-                throw new RuntimeException("Bitiş adresi için koordinat üretilemedi.");
-            }
-
             planRequest.setEndLatitude(endGeo.getLatitude());
             planRequest.setEndLongitude(endGeo.getLongitude());
+        } else {
+            // Bitiş yoksa başlangıçla aynı yap (round-trip)
+            planRequest.setEndLatitude(planRequest.getStartLatitude());
+            planRequest.setEndLongitude(planRequest.getStartLongitude());
         }
 
         planRequest.setUseTolls(Boolean.TRUE.equals(request.getUseTolls()));
@@ -165,7 +163,6 @@ public class RouteImportServiceImpl implements RouteImportService {
         planRequest.setNavigationProvider(request.getNavigationProvider());
 
         RoutePlanEntity routePlan = routePlanService.createRoutePlan(planRequest);
-
         routePlanService.addStops(routePlan.getId(), request.getStops());
 
         ReoptimizeRouteRequest reoptimizeRequest = new ReoptimizeRouteRequest();

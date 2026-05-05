@@ -12,16 +12,22 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:8081,http://localhost:19006}")
-    private List<String> allowedOrigins;
+    /**
+     * Geliştirme: Expo dev server, Android emulator (10.0.2.2), iOS simulator (localhost).
+     * Production: kendi web/mobile origin'lerini ekle.
+     */
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://10.0.2.2:*,http://192.168.*:*,exp://*}")
+    private List<String> allowedOriginPatterns;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(allowedOrigins);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOriginPatterns(allowedOriginPatterns);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
