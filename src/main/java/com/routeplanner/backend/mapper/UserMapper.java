@@ -15,6 +15,9 @@ public class UserMapper {
         response.setPhoneNumber(entity.getPhoneNumber());
         response.setRole(entity.getRole());
         response.setCompanyName(entity.getCompanyName());
+        response.setAuthProvider(entity.getAuthProvider());
+        response.setAvatarUrl(entity.getAvatarUrl());
+        response.setEmailVerified(entity.getEmailVerified());
         return response;
     }
 }

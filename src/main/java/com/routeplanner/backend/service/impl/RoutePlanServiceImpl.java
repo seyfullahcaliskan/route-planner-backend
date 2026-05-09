@@ -1,18 +1,23 @@
 package com.routeplanner.backend.service.impl;
 
 import com.routeplanner.backend.dto.geocoding.GeocodingResult;
+import com.routeplanner.backend.dto.request.AddStopsAndReoptimizeRequest;
 import com.routeplanner.backend.dto.request.CreateRoutePlanRequest;
 import com.routeplanner.backend.dto.request.CreateRouteStopRequest;
+import com.routeplanner.backend.dto.request.ReoptimizeRouteRequest;
 import com.routeplanner.backend.entity.RoutePlanEntity;
 import com.routeplanner.backend.entity.RouteStopEntity;
 import com.routeplanner.backend.entity.UserEntity;
 import com.routeplanner.backend.enums.RoutePlanStatusEnum;
+import com.routeplanner.backend.exception.ApiErrorCode;
+import com.routeplanner.backend.exception.ApiException;
 import com.routeplanner.backend.exception.GeocodingException;
 import com.routeplanner.backend.exception.ResourceNotFoundException;
 import com.routeplanner.backend.repository.RoutePlanRepository;
 import com.routeplanner.backend.repository.RouteStopRepository;
 import com.routeplanner.backend.repository.UserRepository;
 import com.routeplanner.backend.service.GeocodingService;
+import com.routeplanner.backend.service.RouteOptimizationService;
 import com.routeplanner.backend.service.RoutePlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +36,7 @@ public class RoutePlanServiceImpl implements RoutePlanService {
     private final RouteStopRepository routeStopRepository;
     private final UserRepository userRepository;
     private final GeocodingService geocodingService;
+    private final RouteOptimizationService routeOptimizationService;
 
     @Override
     public RoutePlanEntity createRoutePlan(CreateRoutePlanRequest request) {
@@ -67,7 +73,10 @@ public class RoutePlanServiceImpl implements RoutePlanService {
     @Override
     public List<RouteStopEntity> addStops(UUID routePlanId, List<CreateRouteStopRequest> requests) {
         RoutePlanEntity routePlan = routePlanRepository.findById(routePlanId)
-                .orElseThrow(() -> new ResourceNotFoundException("RoutePlan", "id", routePlanId));
+                .orElseThrow(() -> ApiException.notFound(
+                        ApiErrorCode.ROUTE_NOT_FOUND,
+                        "Rota bulunamadı."
+                ));
 
         int currentSize = routeStopRepository.findByRoutePlanIdOrderBySequenceNoAsc(routePlanId).size();
         List<RouteStopEntity> result = new ArrayList<>();
@@ -86,7 +95,7 @@ public class RoutePlanServiceImpl implements RoutePlanService {
             stop.setSequenceNo(currentSize + i + 1);
 
             if (request.hasCoordinates()) {
-                // Mobil haritadan seçilmiş — geocoding ATLAR
+                // Mobil haritadan seçilmiş — geocoding ATLAR (maliyet kazanımı)
                 stop.setNormalizedAddress(request.getRawAddress());
                 stop.setLatitude(request.getLatitude());
                 stop.setLongitude(request.getLongitude());
@@ -113,5 +122,46 @@ public class RoutePlanServiceImpl implements RoutePlanService {
     @Transactional(readOnly = true)
     public List<RouteStopEntity> getStops(UUID routePlanId) {
         return routeStopRepository.findByRoutePlanIdOrderBySequenceNoAsc(routePlanId);
+    }
+
+    /**
+     * "Yola çıkmışken durak ekle + reoptimize" — tek transaction.
+     *
+     * Sıra önemli:
+     *   1) addStops çağırırız — yeni duraklar listenin sonuna eklenir, sequence
+     *      atanır ama bu sıra geçici (optimize edilmemiş).
+     *   2) Aynı transaction içinde reoptimize çalışır — DELIVERED olanlar dokunulmaz,
+     *      kalan tüm aktif duraklar (yeni eklenenler dahil) optimum sıraya yerleşir.
+     *   3) Notification servisi (RouteOptimizationService içinde) tetiklenir.
+     */
+    @Override
+    public List<RouteStopEntity> addStopsAndReoptimize(UUID routePlanId,
+                                                       AddStopsAndReoptimizeRequest request) {
+        if (request == null || request.getStops() == null || request.getStops().isEmpty()) {
+            throw ApiException.badRequest(
+                    ApiErrorCode.VALIDATION_ERROR,
+                    "En az bir durak eklemelisiniz."
+            );
+        }
+
+        // 1) Yeni durakları ekle.
+        addStops(routePlanId, request.getStops());
+
+        // 2) Reoptimize parametrelerini hazırla; gelmemişse mantıklı varsayılan.
+        ReoptimizeRouteRequest reoptParams = request.getReoptimize();
+        if (reoptParams == null) {
+            reoptParams = new ReoptimizeRouteRequest();
+            reoptParams.setIncludeSkippedStops(true);
+            reoptParams.setIncludeFailedStops(false);
+            reoptParams.setIncludePostponedStops(true);
+            reoptParams.setNote("Durak eklendi - otomatik yeniden optimizasyon");
+        }
+
+        // 3) Reoptimize çalıştır → güncel listeyi döner.
+        return routeOptimizationService.reoptimizeRoute(
+                routePlanId,
+                request.getTriggeredByUserId(),
+                reoptParams
+        );
     }
 }

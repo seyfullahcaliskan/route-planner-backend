@@ -2,40 +2,33 @@ package com.routeplanner.backend.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 /**
- * Yeni kayıtlı yer (saved place) oluşturma isteği.
+ * Bir kayıtlı yerin (saved place) tamamen veya kısmen güncellenmesi için.
  *
- * userId artık BURADAN gelmiyor — JWT'den okunuyor (UserSavedPlaceController).
+ * Tüm alanlar opsiyonel: null gelen alana dokunulmaz.
  */
 @Data
-public class CreateUserSavedPlaceRequest {
+public class UpdateUserSavedPlaceRequest {
 
-    @NotBlank
     @Size(max = 100)
     private String placeName;
 
     /** HOME | WORK | WAREHOUSE | STORE | CUSTOM */
-    @NotBlank
     @Size(max = 30)
     private String placeType;
 
-    @NotBlank
     @Size(max = 500)
     private String address;
 
-    @NotNull
     @DecimalMin(value = "-90.0")
     @DecimalMax(value = "90.0")
     private BigDecimal latitude;
 
-    @NotNull
     @DecimalMin(value = "-180.0")
     @DecimalMax(value = "180.0")
     private BigDecimal longitude;

@@ -1,13 +1,16 @@
 package com.routeplanner.backend.controller;
 
+import com.routeplanner.backend.dto.request.AddStopsAndReoptimizeRequest;
 import com.routeplanner.backend.dto.request.CreateRoutePlanRequest;
 import com.routeplanner.backend.dto.request.CreateRouteStopRequest;
 import com.routeplanner.backend.dto.response.RoutePlanResponse;
 import com.routeplanner.backend.dto.response.RouteStopResponse;
+import com.routeplanner.backend.entity.UserEntity;
 import com.routeplanner.backend.mapper.RoutePlanMapper;
 import com.routeplanner.backend.mapper.RouteStopMapper;
 import com.routeplanner.backend.service.RoutePlanService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,6 +51,26 @@ public class RoutePlanController {
     @GetMapping("/{routePlanId}/stops")
     public List<RouteStopResponse> getStops(@PathVariable UUID routePlanId) {
         return routePlanService.getStops(routePlanId)
+                .stream()
+                .map(RouteStopMapper::toResponse)
+                .toList();
+    }
+
+    /**
+     * Yola çıkmışken yeni durak(lar) ekle ve hemen yeniden optimize et.
+     * Frontend için tek round-trip.
+     *
+     * triggeredByUserId body içinde gönderilebilir; gönderilmezse JWT'deki kullanıcı kullanılır.
+     */
+    @PostMapping("/{routePlanId}/stops-and-reoptimize")
+    public List<RouteStopResponse> addStopsAndReoptimize(@PathVariable UUID routePlanId,
+                                                         @AuthenticationPrincipal UserEntity user,
+                                                         @Valid @RequestBody AddStopsAndReoptimizeRequest request) {
+        // triggeredByUserId boşsa JWT'den doldur
+        if (request.getTriggeredByUserId() == null && user != null) {
+            request.setTriggeredByUserId(user.getId());
+        }
+        return routePlanService.addStopsAndReoptimize(routePlanId, request)
                 .stream()
                 .map(RouteStopMapper::toResponse)
                 .toList();

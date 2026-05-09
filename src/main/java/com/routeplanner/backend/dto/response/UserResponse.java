@@ -1,5 +1,6 @@
 package com.routeplanner.backend.dto.response;
 
+import com.routeplanner.backend.enums.AuthProviderEnum;
 import com.routeplanner.backend.enums.UserRoleEnum;
 
 import java.util.UUID;
@@ -14,6 +15,14 @@ public class UserResponse {
     private String phoneNumber;
     private UserRoleEnum role;
     private String companyName;
+
+    /** OAuth ile gelen kullanıcılarda Google/Apple olur. Frontend şifre kartını gizlemek için kullanır. */
+    private AuthProviderEnum authProvider;
+
+    /** Avatar URL — frontend profil ekranında kullanılır. */
+    private String avatarUrl;
+
+    private Boolean emailVerified;
 
     public UUID getId() {
         return id;
@@ -77,5 +86,29 @@ public class UserResponse {
 
     public void setCompanyName(String companyName) {
         this.companyName = companyName;
+    }
+
+    public AuthProviderEnum getAuthProvider() {
+        return authProvider;
+    }
+
+    public void setAuthProvider(AuthProviderEnum authProvider) {
+        this.authProvider = authProvider;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public Boolean getEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(Boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }
